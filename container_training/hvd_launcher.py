@@ -95,7 +95,7 @@ def get_training_world(local=False):
     hosts = json.loads(os.environ["SM_HOSTS"])
     current_host = os.environ["SM_CURRENT_HOST"]
     
-    # Define PyTorch training world
+    # Define training world
     world = {}
     world["number_of_processes"] = num_gpus if num_gpus > 0 else num_cpus
     world["number_of_machines"] = len(hosts)
