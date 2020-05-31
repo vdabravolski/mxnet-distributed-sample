@@ -117,12 +117,19 @@ def get_training_world(local=False):
 
 
 def worker_routine(proccess_id_string, worker):
+    """
+    This method waits is executed on worker side. 
+    It waits for 60 seconds and then checks if training processes are spawned up.
+    """
+    
+    print("Inside worker routine")
 
     training_process_started = False
+    
     while True:
-        time.sleep(300)
+        time.sleep(60)
+                
         training_process_ps = subprocess.check_output('ps -elf | grep "{}"'.format(proccess_id_string), encoding='utf-8', shell=True)
-        print(training_process_ps)
         training_process_count = subprocess.check_output('ps -elf | grep "{}" | wc -l'.format(proccess_id_string), encoding='utf-8', shell=True)
         training_process_count_str = training_process_count.replace("\n", "").strip()
         training_process_count = int(training_process_count_str) - 2
@@ -138,14 +145,34 @@ def worker_routine(proccess_id_string, worker):
             if training_process_running:
                 training_process_started = True
             else:
-                print('Worker {} exiting: training not started in 300 seconds.'.format(worker))
+                print('Worker {} exiting: training not started in 60 seconds.'.format(worker))
                 sys.exit(1)
 
 
 def master_routine(world, train_script, train_args):
     
+    if_name = os.environ['SM_NETWORK_INTERFACE_NAME']
+    
     # MPI run  config, according to HVD documentation: https://horovod.readthedocs.io/en/stable/mpirun.html
-    mpi_cmd = """mpirun -np {} -H {}  -bind-to none -map-by slot -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH -mca pml ob1 -mca btl ^openib""".format(world["size"], world["hosts"])
+    mpi_cmd =  ("mpirun -np {} -H {} ".format(world["size"], world["hosts"]),
+              "--allow-run-as-root "
+              "--display-map "
+              "--tag-output "
+              "-mca btl_tcp_if_include {} ".format(if_name),
+              "-mca oob_tcp_if_include {} ".format(if_name),
+              "-x NCCL_SOCKET_IFNAME={} ".format(if_name),
+              "-mca plm_rsh_no_tree_spawn 1 "
+              "--bind-to none "
+              "--map-by slot "
+              "-mca orte_abort_on_non_zero_status 1 "
+              "-x NCCL_DEBUG=INFO "
+              "-x LD_LIBRARY_PATH "
+              "-x PATH "
+              "-mca pml ob1 "
+              "-mca btl ^openib ")
+
+    mpi_cmd = ''.join(mpi_cmd)
+    
     
     # Train script config
     train_cmd = " python {} {}".format(args.train_script, train_args)    
@@ -153,9 +180,6 @@ def master_routine(world, train_script, train_args):
     # Concat MPI run configuration and training script and its parameters
     joint_cmd = mpi_cmd+train_cmd
     print("*********joint_cmd******* \n",joint_cmd)
-    
-#     import time
-#     time.sleep(3600)
     
     process = subprocess.Popen(joint_cmd,  stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True) # TODO: consider refactoring to avoid shell=True
     
@@ -176,14 +200,14 @@ def master_routine(world, train_script, train_args):
 
 if __name__ == "__main__":
 
-    # Started SSH daemon across all nodes and establish communication
+    # Start SSH daemon across all nodes and establish communication
     common_setup()
 
     # Parse common arguments
     print('Starting training...')
     parser = ArgumentParser()
     parser.add_argument('--train-script', type=str, required=True, help="specify training script to run")
-    parser.add_argument('--local', type=str, help="specify if you want to run locally")
+    parser.add_argument('--local', type=str, default="false", help="specify if you want to run locally")
     args, unknown = parser.parse_known_args()
     train_args = ' '.join(unknown)
 

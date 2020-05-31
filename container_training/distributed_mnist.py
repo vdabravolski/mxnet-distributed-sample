@@ -171,7 +171,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MXNet MNIST Distributed Example')
     parser.add_argument('--batch-size', type=int, default=64,
                         help='training batch size (default: 64)')
-    # TODO: remove data type argument... not relevant for the lab.
     parser.add_argument('--dtype', type=str, default='float32',
                         help='training data type (default: float32)')
     parser.add_argument('--epochs', type=int, default=5,
