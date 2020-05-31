@@ -1,2 +1,2 @@
 # mxnet-distributed-sample
-example of distributed multi-node/multi-device training of MXNet model 
+Example of distributed multi-node/multi-device training of MXNet model using Amazon Sagemaker. 
