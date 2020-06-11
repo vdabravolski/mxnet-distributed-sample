@@ -118,7 +118,7 @@ def get_training_world(local=False):
 
 def worker_routine(proccess_id_string, worker):
     """
-    This method waits is executed on worker side. 
+    This method is executed on workers. 
     It waits for 60 seconds and then checks if training processes are spawned up.
     """
     
